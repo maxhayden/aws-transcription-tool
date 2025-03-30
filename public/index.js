@@ -1,12 +1,16 @@
 const express = require('express')
 const app = express();
-const port = 8000;
+const port = 80;
 
 
 app.get('/', function (req, res) {
-    res.send('GET request to homepage')
-  })
+    res.send(
 
-  app.listen(port, () => {
-    console.log(`Now listening on port ${port}`);
+        "hello world"
+
+    )
+})
+
+app.listen(port, () => {
+    console.log(`Now listening on port ${80}`);
 }); 
