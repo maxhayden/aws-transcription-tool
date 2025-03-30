@@ -5,9 +5,13 @@ const port = 80;
 
 app.get('/', function (req, res) {
     res.send(
-
         "hello world"
+    )
+})
 
+app.get('/message', function (req, res) {
+    res.send(
+        "This is my message"
     )
 })
 
