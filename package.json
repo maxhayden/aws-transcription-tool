@@ -1,0 +1,15 @@
+{
+  "name": "audio-transcriber",
+  "version": "1.0.0",
+  "description": "AWS cloud hosted service for transcribing audio files",
+  "license": "ISC",
+  "author": "maxwell hayden",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
