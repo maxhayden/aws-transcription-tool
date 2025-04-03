@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
+require('dotenv').config()
 
 var urlencodedParser = bodyParser.urlencoded({ extended: false});
 
@@ -15,7 +16,7 @@ app.use(express.static('public'));
 
 app.get('/', function(req, res) {
     //open form.html from the views directory
-    res.render('index');
+    res.render('index',{lambda: process.env.LAMBDA});
 });
 
 app.get('/home', function(req, res) {
@@ -36,4 +37,4 @@ app.post('/', urlencodedParser, function(req, res) {
     res.render('submitted', {output: req.body.firstName});
 });
 
-app.listen(3000);
+app.listen(80);
