@@ -1,7 +1,8 @@
+require('dotenv').config();
+
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
-require('dotenv').config()
 
 var urlencodedParser = bodyParser.urlencoded({ extended: false});
 
@@ -16,12 +17,12 @@ app.use(express.static('public'));
 
 app.get('/', function(req, res) {
     //open form.html from the views directory
-    res.render('index',{lambda: process.env.LAMBDA});
+    res.render('index',{api_gateway: process.env.API_GATEWAY, cognito: process.env.COGNITO});
 });
 
 app.get('/home', function(req, res) {
     //open form.html from the views directory
-    res.render('index');
+    res.render('index',{api_gateway: process.env.API_GATEWAY, cognito: process.env.COGNITO});
 });
 
 app.get('/dashboard', function(req, res) {
@@ -29,12 +30,12 @@ app.get('/dashboard', function(req, res) {
     res.render('app');
 });
 
-app.post('/', urlencodedParser, function(req, res) {
-    //retrieve first and lastname
-    var firstName = req.body.firstName;
-    var lastName = req.body.lastName;
-    //open submitted.html after the user has submitted the form
-    res.render('submitted', {output: req.body.firstName});
+app.post('/dashboard', urlencodedParser, function(req, res) {
+    //listen for post requests when processing files
 });
+
+app.use(function(req,res,next){ 
+    res.status(404).render('404'); 
+}); 
 
 app.listen(80);
