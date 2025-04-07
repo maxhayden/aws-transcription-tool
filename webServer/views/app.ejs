@@ -43,9 +43,10 @@
                                 <h1>Add Your Audio File here</h1>
                            </div>
                            <div class="col-6">
-                            <form class="form" method="post" action="" enctype="multipart/form-data">
-                                <div class="box__input ">
-                                  <input class="box__file btn btn-secondary text-dark form-control" type="file" id="file"/>
+                            <form class="form" method="post" action="dashboard" enctype="multipart/form-data">
+                                <div class="box__input">
+                                    <input class="box__file btn btn-secondary text-dark form-control" type="text" name="fileName"/>
+                                  <input class="box__file btn btn-secondary text-dark form-control" type="file" name="image"/>
                                   <button class="btn btn-primary m-3" type="submit">Upload</button>
                                 </div>
                                 <div class="box__uploading">Uploading…</div>
