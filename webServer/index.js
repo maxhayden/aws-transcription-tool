@@ -24,7 +24,7 @@ const dbConfig = {
     password: process.env.DB_PASS,
     database: process.env.DB_DATABASE,
 };
-const dbConnection = sql.createConnection(config);
+const dbConnection = sql.createConnection(dbConfig);
 
 
 
@@ -73,8 +73,8 @@ app.get('/dashboard', function (req, res) {
 });
 
 app.get('/debug', function (req, res) {
-    con.connect(function (err) {
-        con.query("SELECT * FROM users", function (err, result, fields) {
+    dbConnection.connect(function (err) {
+        dbConnection.query("SELECT * FROM users", function (err, result, fields) {
             if (err) throw err;
             console.log(result);
           });
