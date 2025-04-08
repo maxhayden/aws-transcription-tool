@@ -66,6 +66,35 @@ app.get('/register', function (req, res) {
     res.render('register');
 });
 
+app.post('/register', function (req, res) {
+    //register process page
+    //get the user input
+    const email = req.body.email;
+    const name = req.body.name;
+    const password = req.body.password;
+
+    dbConnection.connect(function (err) {
+        if (err) {
+            console.error('Database connection failed:', err);
+            return res.status(500).send('Database connection failed: ' + err.message);
+        }
+        runQuery();
+    });
+
+    function runQuery() {
+        con.query(`INSERT INTO users (email, name, password) VALUES ("${email}", "${name}", ${password})`, function (err, result, fields) {
+            dbConnection.release();
+            if (err) {
+                console.error('Query error:', err);
+                res.status(500).render('signin?error');
+            }
+            res.render('signin?registered');
+        }
+        );
+    }
+});
+
+
 
 app.get('/dashboard', function (req, res) {
     //open form.html from the views directory
@@ -83,8 +112,10 @@ app.get('/debug', function (req, res) {
         runQuery();
     });
 
+
     function runQuery() {
         dbConnection.query("SELECT * FROM users", function (err, results) {
+            dbConnection.release();
             if (err) {
                 console.error('Query error:', err);
                 return res.status(500).send('Query failed: ' + err.message);
