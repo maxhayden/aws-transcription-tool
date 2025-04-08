@@ -73,11 +73,26 @@ app.get('/dashboard', function (req, res) {
 });
 
 app.get('/debug', function (req, res) {
-    dbConnection.connect(function (err) {
-        dbConnection.query("SELECT * FROM users", function (err, result, fields) {
-            if (err) throw err;
-            console.log(result);
-          });
+    app.get('/debug', function (req, res) {
+        // Ensure connection is successful
+        dbConnection.connect(function (err) {
+            if (err) {
+                console.error('Database connection failed:', err.message);  // Log the error message
+                return res.status(500).send('Database connection failed: ' + err.message);  // Send the error in the response
+            }
+            
+            // Query the database
+            dbConnection.query("SELECT * FROM users", function (err, result, fields) {
+                if (err) {
+                    console.error('Error executing query:', err.message);  // Log the query error
+                    return res.status(500).send('Query execution failed: ' + err.message);  // Send the error in the response
+                }
+                
+                // If successful, log and send the results
+                console.log('Query result:', result);
+                res.send(result);  // Send the result back as a response
+            });
+        });
     });
 })
 
