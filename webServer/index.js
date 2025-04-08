@@ -24,7 +24,7 @@ const dbConfig = {
     password: process.env.DB_PASS,
     database: process.env.DB_DATABASE,
 };
-const dbConnection = sql.createConnection(dbConfig);
+const dbConnection = sql.createPool(dbConfig);
 
 
 
@@ -73,7 +73,7 @@ app.post('/register', function (req, res) {
     const name = req.body.name;
     const password = req.body.password;
 
-    dbConnection.connect(function (err) {
+    dbConnection.getConnection(function (err) {
         if (err) {
             console.error('Database connection failed:', err);
             return res.status(500).send('Database connection failed: ' + err.message);
@@ -104,7 +104,7 @@ app.get('/dashboard', function (req, res) {
 app.get('/debug', function (req, res) {
     // Check if connection is already established
 
-    dbConnection.connect(function (err) {
+    dbConnection.getConnection(function (err) {
         if (err) {
             console.error('Database connection failed:', err);
             return res.status(500).send('Database connection failed: ' + err.message);
