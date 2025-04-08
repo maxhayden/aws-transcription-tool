@@ -1,2 +1,3 @@
 cloudformations/
 node_modules/
+.env

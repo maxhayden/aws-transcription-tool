@@ -1,0 +1,394 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: cloudformation for audio transcription Application
+
+Resources:
+  # Security groups
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow all incoming http and ssh
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow only messaging from frontend through port 8000
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: !Ref PublicSubnetCIDR
+
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  # Internet gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Routing for the public subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1) EIP
+  PublicNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt PublicElasticIp.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet NAT
+
+  # Routing for the private subnet
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet 1 (AZ1)
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes 1 (AZ1)
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PublicNatGateway
+
+  # Routing for the private subnet 2
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet 2 (AZ1)
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes 2 (AZ1)
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref PublicNatGateway
+ 
+  # Frontend server
+  WebServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      UserData: !Base64
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            # Update the system
+            sudo yum update -y
+
+            # Install git, curl, and other dependencies
+            sudo yum install -y git curl-minimal
+
+            # Download and install nvm:
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+            # in lieu of restarting the shell
+            \. "$HOME/.nvm/nvm.sh"
+            # Download and install Node.js:
+            nvm install 18
+            # Verify the Node.js version:
+            node -v # Should print "v18.20.8".
+            nvm current # Should print "v18.20.8".
+            # Verify npm version:
+            npm -v # Should print "10.8.2".
+
+            # Clone the repo and install dependencies
+            git clone https://github.com/maxhayden/aws-transcription-tool.git
+            cd aws-transcription-tool
+            npm install
+            npm install express
+            npm install ejs
+            npm install dotenv
+            npm i @aws-sdk/client-s3
+            npm install multer
+            npm install pm2 -g
+            cd webServer
+
+            # Add .env variables
+            echo "S3_INPUT=${S3_INPUT}" >> .env
+            echo "S3_OUTPUT=${S3_OUTPUT}" >> .env
+            echo "REGION=${REGION}" >> .env
+            echo "ACCESS_KEY=${ACCESS_KEY}" >> .env
+            echo "SECRET_KEY=${SECRET_KEY}" >> .env
+            echo "SESSION_TOKEN=${SESSION_TOKEN}" >> .env
+
+            # Start Server
+            pm2 start index.js
+          - S3_INPUT: !Sub '${InputS3BucketName}-${AWS::AccountId}'
+            S3_OUTPUT: !Sub '${OutputS3BucketName}-${AWS::AccountId}'
+            REGION: !Sub '${AWS::Region}'
+            ACCESS_KEY: !Ref AccessKey
+            SECRET_KEY: !Ref AccessSecret
+            SESSION_TOKEN: !Ref SessionToken
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} WebServer
+  
+  InputS3:
+    Type: AWS::S3::Bucket
+    DependsOn: ComputeLambdaPermission
+    Properties:
+      BucketName: !Sub '${InputS3BucketName}-${AWS::AccountId}'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: jpg
+            Function: !GetAtt ComputeLambdaFunction.Arn
+  ComputeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: ComputeLambdaFunction
+    Properties:
+      FunctionName: !GetAtt ComputeLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub 'arn:aws:s3:::${InputS3BucketName}-${AWS::AccountId}'
+  ComputeLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          const {S3Client} = require('@aws-sdk/client-s3');
+          const {RekognitionClient,DetectFacesCommand} = require("@aws-sdk/client-rekognition");
+
+          const s3Client = new S3Client({ region: 'us-east-1' });
+          const rekClient = new RekognitionClient({ region: 'us-east-1' });
+
+          exports.handler = async function(event, context) {
+              // Get the object from the event and show its content type
+              const bucket = event.Records[0].s3.bucket.name;
+              const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
+
+              const rekTest = {
+                Image: {
+                  S3Object: {
+                    Bucket: bucket,
+                    Name: key
+                  },
+                },
+              }
+
+              const command = new DetectFacesCommand(rekTest);
+
+              try {
+                const response = await rekClient.send(command);
+                console.log("number of Faces: " + response.FaceDetails.length);
+
+
+                return {
+                  statusCode: 200,
+                  body: JSON.stringify({ words: 'Found' }),
+                };
+
+              } catch (error) {
+                console.log("error: " + error);
+              } 
+          };
+
+      Description: List Amazon S3 buckets in us-east-1.
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - BackendSecurityGroup
+        SubnetIds:
+          - PrivateSubnet1
+          - PrivateSubnet2
+      Role: !Ref LabRoleARN
+      Handler: index.handler
+      Runtime: nodejs18.x
+
+  OutputS3:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${OutputS3BucketName}-${AWS::AccountId}'
+
+Parameters:
+  InputS3BucketName:
+    Type: String
+    Default: echonote-s3input
+  OutputS3BucketName:
+    Type: String
+    Default: echonote-s3output
+  
+  LabRoleARN:
+    Type: String
+    Description: ARN of the existing Lab role
+
+  LatestAmiId:
+    Description: The latest Amazon Linux 2023 AMI from the Parameter Store
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t3.micro
+      - t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: prod
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.10.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in
+      the first Availability Zone
+    Type: String
+    Default: 10.0.30.0/24
+
+  AccessKey:
+    Description: Access key of your aws account
+    Type: String
+
+  AccessSecret:
+    Description: Access Secret of your aws account
+    Type: String
+
+
+  SessionToken:
+    Description: Session Token of your aws account
+    Type: String
+
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: EchoNote
+
+Outputs:
+  WebsiteURL:
+    Value: !Join
+      - ''
+      - - http://
+        - !GetAtt WebServer.PublicDnsName
+    Description: Website URL
