@@ -96,7 +96,6 @@ app.get('/debug', function (req, res) {
 });
 
 
-
 const s3 = new S3Client({
     region: process.env.REGION,
     credentials: {
