@@ -2,15 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-console.log("ACCESS_KEY:", process.env.ACCESS_KEY);
-console.log("SECRET_KEY:", process.env.SECRET_KEY);
-console.log("REGION:", process.env.REGION);
 
 const multer = require('multer');
 const { memoryStorage } = require('multer');
 const storage = memoryStorage();
 const upload = multer({ storage });
-
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -19,6 +15,16 @@ app.set('views', __dirname + '/views');
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+const sql = require("mysql");
+const dbConfig = {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    port: process.env.DB_PORT,
+    password: process.env.DB_PASS,
+    database: process.env.DB_DATABASE,
+};
+const dbConnection = sql.createConnection(config);
 
 
 
@@ -32,9 +38,12 @@ app.get('/home', function (req, res) {
     res.render('index');
 });
 
-app.get('/login', function (req, res) {
+app.get('/signin', function (req, res) {
     //login page
-    res.render('login');
+    res.render('signin');
+});
+
+app.post('/signin', function (req, res) {
     //write all the functionality to check if a user exists and then log them in
 
     //connect to the database
@@ -50,6 +59,11 @@ app.get('/login', function (req, res) {
     if (password == the_actual_password) {
         res.write("You are logged in");
     }
+})
+
+app.get('/register', function (req, res) {
+    //login page
+    res.render('register');
 });
 
 
@@ -57,6 +71,15 @@ app.get('/dashboard', function (req, res) {
     //open form.html from the views directory
     res.render('app');
 });
+
+app.get('/debug', function (req, res) {
+    con.connect(function (err) {
+        con.query("SELECT * FROM users", function (err, result, fields) {
+            if (err) throw err;
+            console.log(result);
+          });
+    });
+})
 
 
 
