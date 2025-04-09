@@ -16,7 +16,7 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-const sql = require("mysql");
+const sql = require("mysql2");
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -73,28 +73,23 @@ app.post('/register', function (req, res) {
     const name = req.body.name;
     const password = req.body.password;
 
-    dbConnection.getConnection(function (err) {
+    dbConnection.getConnection(function (err, connection) {
         if (err) {
             console.error('Database connection failed:', err);
             return res.status(500).send('Database connection failed: ' + err.message);
         }
-        runQuery();
-    });
-
-    function runQuery() {
-        con.query(`INSERT INTO users (email, name, password) VALUES ("${email}", "${name}", ${password})`, function (err, result, fields) {
-            dbConnection.release();
+        connection.query(`INSERT INTO users (email, username, password_hash) VALUES ("${email}", "${name}", "${password}")`, function (err, result, fields) {
+            connection.release();
             if (err) {
                 console.error('Query error:', err);
-                res.status(500).render('signin?error');
+                res.status(500).render('signin');
             }
-            res.render('signin?registered');
+            res.render('signin');
         }
-        );
-    }
+        );      
+    });
+   
 });
-
-
 
 app.get('/dashboard', function (req, res) {
     //open form.html from the views directory
@@ -102,28 +97,24 @@ app.get('/dashboard', function (req, res) {
 });
 
 app.get('/debug', function (req, res) {
-    // Check if connection is already established
-
-    dbConnection.getConnection(function (err) {
+    dbConnection.getConnection(function (err, connection) {
         if (err) {
             console.error('Database connection failed:', err);
             return res.status(500).send('Database connection failed: ' + err.message);
         }
-        runQuery();
-    });
 
+        connection.query("SELECT * FROM users", function (err, results) {
+            connection.release(); // release the connection back to the pool
 
-    function runQuery() {
-        dbConnection.query("SELECT * FROM users", function (err, results) {
-            dbConnection.release();
             if (err) {
                 console.error('Query error:', err);
                 return res.status(500).send('Query failed: ' + err.message);
             }
+
             console.log('Query results:', results);
-            res.json(results); // Send results as JSON response
+            res.json(results);
         });
-    }
+    });
 });
 
 
