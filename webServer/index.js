@@ -1,13 +1,6 @@
 require('dotenv').config();
+
 const express = require('express');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-
-
-const multer = require('multer');
-const { memoryStorage } = require('multer');
-const storage = memoryStorage();
-const upload = multer({ storage });
-
 const app = express();
 app.set('view engine', 'ejs');
 app.engine('html', require('ejs').renderFile);
@@ -15,6 +8,18 @@ app.set('views', __dirname + '/views');
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
+const multer = require('multer');
+const { memoryStorage } = require('multer');
+const storage = memoryStorage();
+const upload = multer({ storage });
+
 
 const sql = require("mysql2");
 const dbConfig = {
@@ -26,7 +31,35 @@ const dbConfig = {
 };
 const dbConnection = sql.createPool(dbConfig);
 
+const session = require('express-session');
+const MySQLStore = require("express-mysql-session")(session);
+const sessionStore = new MySQLStore(dbConfig);
 
+app.use(
+    session({
+        secret:"secret",
+        resave: false,
+        saveUninitialized: false,
+        store: sessionStore,
+        cookie: {
+            maxAge: 60000 * 60 * 24
+        }
+    })
+)
+
+app.use(function(req, res, next) {
+    res.locals.user = req.session.authenticated ? req.session.user : null;
+    next();
+  });
+
+
+function isAuthenticated(req,res,next){
+    if(req.session.authenticated == true){ 
+        next();
+    } else{
+        res.redirect("/login?accessDenied");
+    }
+}
 
 app.get('/', function (req, res) {
     //home page
@@ -38,27 +71,55 @@ app.get('/home', function (req, res) {
     res.render('index');
 });
 
-app.get('/signin', function (req, res) {
+app.get('/login', function (req, res) {
     //login page
-    res.render('signin');
+    res.render('login');
 });
 
-app.post('/signin', function (req, res) {
-    //write all the functionality to check if a user exists and then log them in
-
-    //connect to the database
-
+app.post('/login', function (req, res) {
+    console.log("signing in...");
     //get the user input
-    const username = req.query.username;
-    const password = req.query.password;
+    const {email, password} = req.body;
 
-    //check if username exists in the database
+    dbConnection.getConnection(function (err, connection) {
+        if (err) {
+            console.error('Database connection failed:', err);
+            return res.status(500).send('Database connection failed: ' + err.message);
+        }
+        connection.query(`SELECT * FROM users WHERE email = "${email}"`, function (err, result, fields) {
+            connection.release();
+            if (err) {
+                console.error('Query error:', err);
+                res.status(500).render('login');
+            }
+
+            console.log(result);
+
+            if (result.length == 1) {
+                bcrypt.compare(password, result[0].password_hash, function (err, result) {
+                    if (result == true) {
+                        console.log("logged in");
+
+                        //start session
+                        req.session.authenticated = true;
+                        req.session.user = email;
+                        console.log(req.session);
 
 
-    //check if the username password is right
-    if (password == the_actual_password) {
-        res.write("You are logged in");
-    }
+                        return res.redirect('/home?loggedin'); 
+                    }  else {
+                        console.log("wrong password");
+                        return res.redirect('/login?error'); 
+                    }
+                });
+            } else {
+                console.log("account doesn't exist");
+                return res.redirect('/login?error'); 
+            }
+            
+        }
+        );
+    });
 })
 
 app.get('/register', function (req, res) {
@@ -69,29 +130,41 @@ app.get('/register', function (req, res) {
 app.post('/register', function (req, res) {
     //register process page
     //get the user input
-    const email = req.body.email;
-    const name = req.body.name;
-    const password = req.body.password;
+    const {email, password} = req.body;
 
-    dbConnection.getConnection(function (err, connection) {
+    bcrypt.hash(password, saltRounds, function (err, hash) {
         if (err) {
-            console.error('Database connection failed:', err);
-            return res.status(500).send('Database connection failed: ' + err.message);
+            console.error('Hash failed:', err);
+            return res.status(500).send('Hash failed: ' + err.message);
         }
-        connection.query(`INSERT INTO users (email, username, password_hash) VALUES ("${email}", "${name}", "${password}")`, function (err, result, fields) {
-            connection.release();
+        dbConnection.getConnection(function (err, connection) {
             if (err) {
-                console.error('Query error:', err);
-                res.status(500).render('signin');
+                console.error('Database connection failed:', err);
+                return res.status(500).send('Database connection failed: ' + err.message);
             }
-            res.render('signin');
-        }
-        );      
+            connection.query(`INSERT INTO users (email, password_hash) VALUES ("${email}", "${hash}")`, function (err, result, fields) {
+                connection.release();
+                if (err) {
+                    console.error('Query error:', err);
+                    return res.redirect('/register?error'); 
+                }
+                console.log("User Registered");
+                return res.redirect('/login'); 
+            }
+            );
+        });
     });
-   
 });
 
-app.get('/dashboard', function (req, res) {
+app.get('/logout', function (req, res){
+    req.session.destroy(function(err) {
+        // cannot access session here
+    })
+    res.locals.user = null;
+    res.render('logout');
+})
+
+app.get('/dashboard', isAuthenticated, function (req, res) {
     //open form.html from the views directory
     res.render('app');
 });
@@ -116,6 +189,10 @@ app.get('/debug', function (req, res) {
         });
     });
 });
+
+app.get('/session', function(req, res){
+    res.json(req.session);
+})
 
 //404 not found page
 app.use(function (req, res, next) {
