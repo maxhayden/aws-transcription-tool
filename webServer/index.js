@@ -117,6 +117,14 @@ app.get('/debug', function (req, res) {
     });
 });
 
+//404 not found page
+app.use(function (req, res, next) {
+    res.status(404).render('404');
+});
+
+//////////////////////////////
+///// POST TO BUCKET /////////
+//////////////////////////////
 
 const s3 = new S3Client({
     region: process.env.REGION,
@@ -126,7 +134,6 @@ const s3 = new S3Client({
         sessionToken: process.env.SESSION_TOKEN
     }
 })
-
 const uploadImage = async (fileName, bucketName, file) => {
 
     const params = {
@@ -139,7 +146,6 @@ const uploadImage = async (fileName, bucketName, file) => {
 
     return await s3.send(new PutObjectCommand(params));
 }
-
 //post to s3 bucket
 app.post('/dashboard', upload.single('image'), async (req, res) => {
 
@@ -159,9 +165,6 @@ app.post('/dashboard', upload.single('image'), async (req, res) => {
     }
 });
 
-app.use(function (req, res, next) {
-    res.status(404).render('404');
-});
 
 
 const port = 80;
