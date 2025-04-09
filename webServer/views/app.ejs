@@ -16,14 +16,11 @@
             <h1 class="">Upload your Image</h1>
         </div>
         <div class="col-8 w-50 ">
-            <form class="p-2 border border-primary rounded" method="post">
-               
-    
+            <form class="p-2 border border-primary rounded" method="post" enctype="multipart/form-data">
                 <div class="border-2">
                     <label for="formFile" class="form-label"></label>
-                    <input class="form-control" type="file" id="formFile">
+                    <input class="form-control" type="file" id="formFile" name="image">
                 </div>
-    
                 <button class="btn btn-primary py-2 mt-3 w-25" type="submit">Upload</button>
             </form>
 

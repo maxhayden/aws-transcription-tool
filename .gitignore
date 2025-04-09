@@ -1,3 +1,5 @@
 cloudformations/
 node_modules/
 .env
+lambda/node_modules/
+lambda/.env

@@ -96,13 +96,14 @@ app.post('/login', function (req, res) {
             console.log(result);
 
             if (result.length == 1) {
-                bcrypt.compare(password, result[0].password_hash, function (err, result) {
-                    if (result == true) {
+                bcrypt.compare(password, result[0].password_hash, function (err, isMatch) {
+                    if (isMatch == true) {
                         console.log("logged in");
 
                         //start session
                         req.session.authenticated = true;
                         req.session.user = email;
+                        req.session.user_id = result[0].id;
                         console.log(req.session);
 
 
@@ -115,8 +116,7 @@ app.post('/login', function (req, res) {
             } else {
                 console.log("account doesn't exist");
                 return res.redirect('/login?error'); 
-            }
-            
+            }   
         }
         );
     });
@@ -166,6 +166,7 @@ app.get('/logout', function (req, res){
 
 app.get('/dashboard', isAuthenticated, function (req, res) {
     //open form.html from the views directory
+    console.log("Inside /dashboard route");
     res.render('app');
 });
 
@@ -194,11 +195,6 @@ app.get('/session', function(req, res){
     res.json(req.session);
 })
 
-//404 not found page
-app.use(function (req, res, next) {
-    res.status(404).render('404');
-});
-
 //////////////////////////////
 ///// POST TO BUCKET /////////
 //////////////////////////////
@@ -211,13 +207,13 @@ const s3 = new S3Client({
         sessionToken: process.env.SESSION_TOKEN
     }
 })
-const uploadImage = async (fileName, bucketName, file) => {
+const uploadImage = async (id, fileName, bucketName, file) => {
 
     const params = {
         Bucket: bucketName,
-        Key: fileName,
+        Key: id + "/" + fileName,
         Body: file,
-        ContentType: 'image/png',
+        ContentType: 'image/png'
     }
 
 
@@ -225,24 +221,29 @@ const uploadImage = async (fileName, bucketName, file) => {
 }
 //post to s3 bucket
 app.post('/dashboard', upload.single('image'), async (req, res) => {
-
+    console.log("Received request for /dashboard");
     console.log("BODY:", req.body);
     console.log("FILE:", req.file);
 
-    const fileName = req.body.fileName;
+    const id = req.session.user_id;
+    const fileName = req.file.originalname;
     const bucketName = process.env.S3_INPUT;
     const file = req.file.buffer;
     try {
-        const result = await uploadImage(fileName, bucketName, file);
+        const result = await uploadImage(id, fileName, bucketName, file);
         console.log(result);
-        res.send("Uploaded successfully");
+        return res.redirect('/dashboard?success'); 
     } catch (err) {
         console.error("Upload failed:", err);
-        res.status(500).send("Failed to upload file");
+        return res.redirect('/dashboard?fail'); 
     }
 });
 
 
+//404 not found page
+app.use(function (req, res, next) {
+    res.status(404).render('404');
+});
 
 const port = 80;
 console.log(`listening on port ${port}`);
