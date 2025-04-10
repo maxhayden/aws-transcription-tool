@@ -9,23 +9,17 @@
 <body class="d-flex flex-column h-100">
 
     <%- include('partials/nav'); %>
-        <!-- Header-->
-        <header class="py-5">
-            <div class="container px-5 pb-5">
-                <div class="row gx-5 align-items-center">
-                    <div class="bg-light row p-5">
-                        <div class="p-5 m-5 text-center">
-                            <h1>
-                                404 Not Found
-                            </h1>
-                        </div>
-                    </div>
-
+    <section class="">
+        <div class="container">
+            <div class="p-5 m-4 bg-body-tertiary rounded-3">
+                <div class=" row container-fluid py-5">
+                    <div class="col-8">
+                        <h1 class="display-5 fw-bold ">404: <span class="grad">Page Not Found</span></h1>
+                    </div>                    
                 </div>
             </div>
-        </header>
-
-        <%- include('partials/about') %>
+        </div>
+    </section>
         <%- include('partials/footer') %>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
