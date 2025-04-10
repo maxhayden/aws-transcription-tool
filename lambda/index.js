@@ -48,7 +48,7 @@ exports.handler = async function (event, context) {
         const response = await rekClient.send(command);
         console.log("Rekognition response:", JSON.stringify(response, null, 2));
 
-        const photoResult = await addPhoto(user_id, key);
+        const photoResult = await addPhoto(user_id, image_name);
         const image_id = photoResult.insertId;
 
         if (response.Labels && response.Labels.length > 0) {

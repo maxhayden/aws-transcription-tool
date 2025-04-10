@@ -107,7 +107,7 @@ app.post('/login', function (req, res) {
                         console.log(req.session);
 
 
-                        return res.redirect('/home?loggedin');
+                        return res.redirect('/dashboard');
                     } else {
                         console.log("wrong password");
                         return res.redirect('/login?error');
@@ -165,31 +165,38 @@ app.get('/logout', function (req, res) {
 })
 
 app.get('/dashboard', isAuthenticated, function (req, res) {
-    //open form.html from the views directory
+    const { tag, post } = req.query;
 
-    dbConnection.getConnection(function (err, connection) {
-
-        if (err) {
-            console.error('Database connection failed:', err);
-            return res.status(500).send('Database connection failed: ' + err.message);
-        }
-
-        connection.query(`
-        SELECT p.url 
-        FROM photos p 
-        JOIN users u ON u.id = p.user_id 
-        WHERE u.id = ?
-    `, [req.session.user_id], function (err, results) {
-            connection.release(); 
+    if (!tag){
+        dbConnection.getConnection(function (err, connection) {
             if (err) {
-                console.error('Query error:', err);
-                return res.status(500).send('Query failed: ' + err.message);
+                console.error('Database connection failed:', err);
+                return res.status(500).send('Database connection failed: ' + err.message);
             }
-            console.log('Query results:', results);
-            res.render('app', { photos: results });
+    
+            connection.query(`
+            SELECT p.url 
+            FROM photos p 
+            JOIN users u ON u.id = p.user_id
+            JOIN photo_tags pt ON p.photo_id = pt.photo_id
+            JOIN tags t ON pt.tag_id = t.tag_id    
+            WHERE u.id = ? AND t.name="${tag}"
+        `, [req.session.user_id], function (err, results) {
+                connection.release(); 
+                if (err) {
+                    console.error('Query error:', err);
+                    return res.status(500).send('Query failed: ' + err.message);
+                }
+                console.log('Query results:', results);
+                res.render('app', { photos: results });
+            });
+    
         });
+    } else {
+        
+    }
 
-    });
+    
 });
 
 
@@ -255,10 +262,10 @@ app.post('/dashboard', upload.single('image'), async (req, res) => {
     try {
         const result = await uploadImage(id, fileName, bucketName, file);
         console.log(result);
-        return res.redirect('/dashboard?success');
+        return res.redirect('/dashboard?post=success');
     } catch (err) {
         console.error("Upload failed:", err);
-        return res.redirect('/dashboard?fail');
+        return res.redirect('/dashboard?post=fail');
     }
 });
 

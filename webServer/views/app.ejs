@@ -26,7 +26,7 @@
                     </div>
                 </form>
             </div>
-            <div class="d-flex flex-wrap justify-content-start mx-3 p-5">
+            <div class="d-flex flex-wrap justify-content-center mx-3 p-5">
 
                 <form class="p-2 m-2 border border-dark rounded image-box" method="post" enctype="multipart/form-data">
 
@@ -48,7 +48,7 @@
                 
                 for(var i=0; i < photos.length; i++) {
                      %>
-                    <div class="p-2 m-2 border border-dark rounded image-box" id="image-box-<%- i %>">
+                    <div class="m-2 border border-dark rounded image-box overflow-hidden" id="image-box-<%- i %>">
                     </div>
                         <script>
                             // Fetch the image from your server
@@ -58,7 +58,8 @@
                                    
                                     const imageUrl = URL.createObjectURL(imageBlob);
                                     const imgElement = document.createElement('img');
-                                    imgElement.style.width = "100%";
+                                    imgElement.style.height = "100%";
+                                    imgElement.classList.add("rounded object-fit-cover");
                                     imgElement.src = imageUrl;
                     
                                     // Find the div container and append the image to it
