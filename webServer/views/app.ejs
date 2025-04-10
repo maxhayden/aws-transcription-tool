@@ -59,7 +59,9 @@
                                     const imageUrl = URL.createObjectURL(imageBlob);
                                     const imgElement = document.createElement('img');
                                     imgElement.style.height = "100%";
-                                    imgElement.classList.add("rounded object-fit-cover");
+                                    imgElement.classList.add("rounded");
+                                    imgElement.classList.add("object-fit-cover");
+                                    imgElement.classList.add("h-100");
                                     imgElement.src = imageUrl;
                     
                                     // Find the div container and append the image to it
