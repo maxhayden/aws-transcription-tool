@@ -13,7 +13,7 @@
         <div class="flex-shrink-0 d-flex align-items-center py-4 bg-body-tertiary h-75">
             <main class="form-signin m-auto p-5 text-center w-25">
                 <form class="p-2" method="post">
-                    <h1 class="h3 mb-3 fw-normal">Welcome Back!</h1>
+                    <h1 class="h3 mb-3 fw-normal">Login</h1>
 
                     <div class="form-floating p-1">
                         <input type="email" name="email" class="form-control" id="floatingInput"
@@ -25,6 +25,9 @@
                             placeholder="Password">
                         <label for="floatingPassword">Password</label>
                     </div>
+                    <% if (query.error) { %>
+                        <p class="text-danger fw-bold">Email or Password is Incorrect</p>
+                    <% } %>
                     <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Login</button>
                 </form>
                 <p>Don't have an account? <a href="/register" class="text-center">Sign Up</a></p>

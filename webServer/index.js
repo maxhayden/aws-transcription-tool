@@ -52,6 +52,13 @@ app.use(function (req, res, next) {
     next();
 });
 
+app.use(function(req, res, next) {
+    res.locals.query = req.query;
+    res.locals.url   = req.originalUrl;
+ 
+    next();
+ });
+
 
 function isAuthenticated(req, res, next) {
     if (req.session.authenticated == true) {
@@ -110,12 +117,12 @@ app.post('/login', function (req, res) {
                         return res.redirect('/dashboard');
                     } else {
                         console.log("wrong password");
-                        return res.redirect('/login?error');
+                        return res.redirect('/login?error=true');
                     }
                 });
             } else {
                 console.log("account doesn't exist");
-                return res.redirect('/login?error');
+                return res.redirect('/login?error=true');
             }
         }
         );
@@ -146,7 +153,7 @@ app.post('/register', function (req, res) {
                 connection.release();
                 if (err) {
                     console.error('Query error:', err);
-                    return res.redirect('/register?error');
+                    return res.redirect('/register?error=true');
                 }
                 console.log("User Registered");
                 return res.redirect('/login');

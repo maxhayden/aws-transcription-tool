@@ -6,26 +6,13 @@
     <%- include('partials/head') %>
 </head>
 
-<body class="d-flex flex-column h-100 w-100">
+<body class="d-flex flex-column h-100">
 
     <%- include('partials/nav'); %>
-        <div class="flex-shrink-0 d-flex align-items-center py-4 bg-body-tertiary h-75">
-            <main class="form-signin m-auto p-5 text-center w-25">
-                <p>
-                    <% if (user) { %>
-                        <p>Welcome, <%= user %>!</p>
-                      <% } else { %>
-                        <p>You are not logged in.</p>
-                      <% } %>
-                    This is the app main page
-                </p>
-            </main>
-        </div>
-
         <%- include('partials/about'); %>
-        <%- include('partials/footer'); %>
-            <script defer="" src="/docs/5.3/dist/js/bootstrap.bundle.min.js"
-                integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"></script>
+            <%- include('partials/footer'); %>
+                <script defer="" src="/docs/5.3/dist/js/bootstrap.bundle.min.js"
+                    integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"></script>
 </body>
 
 </html>

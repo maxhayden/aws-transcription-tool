@@ -18,66 +18,71 @@ const dbConfig = {
 const dbConnection = sql.createPool(dbConfig);
 
 exports.handler = async function (event, context) {
-    try {
-        // Log the incoming event for debugging
-        console.log("Event received:", JSON.stringify(event, null, 2));
+    // Log the incoming event for debugging
+    console.log("Event received:", JSON.stringify(event, null, 2));
+    for (const record of event.Records) {
+        try {
+            // Log the incoming event for debugging
+            const s3Event = JSON.parse(record.body);
+            const s3Record = s3Event.Records[0];
+            console.log("Record parsed:", JSON.stringify(s3Record, null, 2));
 
-        // Extract bucket and object key from the event
-        const bucket = event.Records[0].s3.bucket.name;
-        const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
-        console.log(`Processing S3 object: ${key} from bucket: ${bucket}`);
+            const bucket = s3Record.s3.bucket.name;
+            const key = decodeURIComponent(s3Record.s3.object.key.replace(/\+/g, " "));
+            console.log(`Processing file ${key} from bucket ${bucket}`);
 
-        const user_id = key.split('/')[0];
-        const image_name = key.split('/')[1];
+            const user_id = key.split('/')[0];
+            const image_name = key.split('/')[1];
 
-        // Set up Rekognition parameters
-        const rekTest = {
-            Image: {
-                S3Object: {
-                    Bucket: bucket,
-                    Name: key
+            // Set up Rekognition parameters
+            const rekTest = {
+                Image: {
+                    S3Object: {
+                        Bucket: bucket,
+                        Name: key
+                    },
                 },
-            },
-            MaxLabels: 10,
-            MinConfidence: 75
-        };
-
-        const command = new DetectLabelsCommand(rekTest);
-
-        // Call Rekognition to detect labels
-        const response = await rekClient.send(command);
-        console.log("Rekognition response:", JSON.stringify(response, null, 2));
-
-        const photoResult = await addPhoto(user_id, image_name);
-        const image_id = photoResult.insertId;
-
-        if (response.Labels && response.Labels.length > 0) {
-            // Process each label
-            for await (const element of response.Labels) {
-                console.log(`Detected label: ${element.Name}`);
-                const tagResult = await addTag(element.Name);
-                const tag_id = tagResult.insertId;
-                await addTagPhotoConnection(tag_id, image_id);
-            }
-
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ words: 'Found' }),
+                MaxLabels: 10,
+                MinConfidence: 50
             };
-        } else {
-            console.log("No labels found.");
+
+            const command = new DetectLabelsCommand(rekTest);
+
+            // Call Rekognition to detect labels
+            const response = await rekClient.send(command);
+            console.log("Rekognition response:", JSON.stringify(response, null, 2));
+
+            const photoResult = await addPhoto(user_id, image_name);
+            const image_id = photoResult.insertId;
+
+            if (response.Labels && response.Labels.length > 0) {
+                // Process each label
+                for await (const element of response.Labels) {
+                    console.log(`Detected label: ${element.Name}`);
+                    const tagResult = await addTag(element.Name);
+                    const tag_id = tagResult.insertId;
+                    await addTagPhotoConnection(tag_id, image_id);
+                }
+
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({ words: 'Found' }),
+                };
+            } else {
+                console.log("No labels found.");
+                return {
+                    statusCode: 404,
+                    body: JSON.stringify({ words: 'No labels found' }),
+                };
+            }
+        } catch (error) {
+            // Catch and log any errors during the process
+            console.error("Error during handler execution:", error);
             return {
-                statusCode: 404,
-                body: JSON.stringify({ words: 'No labels found' }),
+                statusCode: 500,
+                body: JSON.stringify({ error: 'Internal Server Error' }),
             };
         }
-    } catch (error) {
-        // Catch and log any errors during the process
-        console.error("Error during handler execution:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error' }),
-        };
     }
 };
 

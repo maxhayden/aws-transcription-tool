@@ -25,6 +25,9 @@
                         <span class="input-group-text" id="basic-addon1">Password:</span>
                         <input type="password" class="form-control" name="password" placeholder="pass123!" required>
                     </div>
+                    <% if (query.error) { %>
+                        <p class="text-danger fw-bold">Email already taken</p>
+                    <% } %>
 
                     <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Register</button>
                 </form>
