@@ -11,24 +11,76 @@
 
     <%- include('partials/nav'); %>
 
-    <div class="row d-flex align-items-center  justify-content-center h-100 bg-light">
-        <div class="col-4 text-center">
-            <h1 class="">Upload your Image</h1>
-        </div>
-        <div class="col-8 w-50 ">
-            <form class="p-2 border border-primary rounded" method="post" enctype="multipart/form-data">
-                <div class="border-2">
-                    <label for="formFile" class="form-label"></label>
-                    <input class="form-control" type="file" id="formFile" name="image">
-                </div>
-                <button class="btn btn-primary py-2 mt-3 w-25" type="submit">Upload</button>
-            </form>
+
+        <div class="bg-body-tertiary p-4">
+            <div class="d-flex">
+                <h1 class="flex-grow-1 px-5 mx-5">My Images</h1>
+                <form class="flex-row mx-5 my-2">
+                    <div class="input-group mb-3 w-100">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="basic-addon3">Search Tags:</span>
+                        </div>
+                        <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3"
+                            name="tag">
+                        <button class="btn btn-primary" type="submit">Search</button>
+                    </div>
+                </form>
+            </div>
+            <div class="d-flex flex-wrap justify-content-start mx-3 p-5">
+
+                <form class="p-2 m-2 border border-dark rounded image-box" method="post" enctype="multipart/form-data">
+
+                    <div class="text-center m-auto p-3 mt-3">
+                        <h2>
+                            Add New Photo
+                        </h2>
+                        <div class="border-2">
+                            <label for="formFile" class="form-label"></label>
+                            <input class="form-control" type="file" id="formFile" name="image">
+                        </div>
+                        <button class="btn btn-primary py-3 mt-5" type="submit">Upload</button>
+
+                    </div>
+
+                </form>
+
+                <% 
+                
+                for(var i=0; i < photos.length; i++) {
+                     %>
+                    <div class="p-2 m-2 border border-dark rounded image-box" id="image-box-<%- i %>">
+                    </div>
+                        <script>
+                            // Fetch the image from your server
+                            fetch('/image?src=<%- photos[i].url %>')
+                                .then(response => response.blob()) 
+                                .then(imageBlob => {
+                                   
+                                    const imageUrl = URL.createObjectURL(imageBlob);
+                                    const imgElement = document.createElement('img');
+                                    imgElement.style.width = "100%";
+                                    imgElement.src = imageUrl;
+                    
+                                    // Find the div container and append the image to it
+                                    const imageContainer = document.getElementById('image-box-<%- i %>');
+                                    imageContainer.appendChild(imgElement);
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching the image:', error);
+                                });
+                        </script>
+
+                
+                    <% } %>
+                        </table>
+
+            </div>
 
         </div>
-    </div>
 
 
-       
+
+
 
 
 

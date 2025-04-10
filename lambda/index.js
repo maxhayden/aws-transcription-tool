@@ -27,6 +27,9 @@ exports.handler = async function (event, context) {
         const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
         console.log(`Processing S3 object: ${key} from bucket: ${bucket}`);
 
+        const user_id = key.split('/')[0];
+        const image_name = key.split('/')[1];
+
         // Set up Rekognition parameters
         const rekTest = {
             Image: {
@@ -35,7 +38,7 @@ exports.handler = async function (event, context) {
                     Name: key
                 },
             },
-            MaxLabels: 5,
+            MaxLabels: 10,
             MinConfidence: 75
         };
 
@@ -45,11 +48,16 @@ exports.handler = async function (event, context) {
         const response = await rekClient.send(command);
         console.log("Rekognition response:", JSON.stringify(response, null, 2));
 
+        const photoResult = await addPhoto(user_id, key);
+        const image_id = photoResult.insertId;
+
         if (response.Labels && response.Labels.length > 0) {
             // Process each label
             for await (const element of response.Labels) {
-                console.log('Detected label: ${element.Name}');
-                await addTag(element.Name); // Await the async DB insert
+                console.log(`Detected label: ${element.Name}`);
+                const tagResult = await addTag(element.Name);
+                const tag_id = tagResult.insertId;
+                await addTagPhotoConnection(tag_id, image_id);
             }
 
             return {
@@ -78,39 +86,78 @@ async function addTag(tag) {
     console.log(`Adding tag to DB: ${tag}`);
 
     try {
-        await new Promise((resolve, reject) => {
-            dbConnection.query("INSERT INTO tags (tag) VALUES (?)", [tag], function (err, results) {
+        // Check if the tag already exists
+        const existingTag = await new Promise((resolve, reject) => {
+            dbConnection.query("SELECT tag_id FROM tags WHERE name = ?", [tag], function (err, results) {
                 if (err) {
-                    console.error("DB error:", err);
-                    reject(err); // Reject if there's an error
+                    reject(err);
+                } else {
+                    resolve(results);
+                }
+            });
+        });
+
+        // If the tag exists, return the tag_id
+        if (existingTag.length > 0) {
+            console.log(`Tag '${tag}' already exists with ID: ${existingTag[0].tag_id}`);
+            return { insertId: existingTag[0].tag_id };
+        }
+
+        // If the tag does not exist, insert it
+        return await new Promise((resolve, reject) => {
+            dbConnection.query("INSERT INTO tags (name) VALUES (?)", [tag], function (err, results) {
+                if (err) {
+                    reject(err);
                 } else {
                     console.log("DB insert successful:", results);
-                    resolve(results); // Resolve if the query was successful
+                    resolve(results);
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error("Error during DB Tag operation:", error);
+    }
+}
+
+async function addPhoto(user_id, image_key) {
+    // Log each DB query to help with debugging
+    console.log(`Adding photo to DB: ${image_key}`);
+
+    try {
+        return await new Promise((resolve, reject) => {
+            dbConnection.query("INSERT INTO photos (user_id, url) VALUES (?, ?)", [user_id, image_key], function (err, results) {
+                if (err) {
+                    reject(err);
+                } else {
+                    console.log("DB insert successful:", results);
+                    resolve(results);
                 }
             });
         });
     } catch (error) {
-        console.error("Error during DB operation:", error);
+        console.error("Error during DB Photo operation:", error);
     }
 }
 
-async function addPhoto(tag) {
-    // Log each DB query to help with debugging
-    console.log(`Adding tag to DB: ${tag}`);
+
+async function addTagPhotoConnection(tag_id, photo_id) {
+    console.log(`connecting tag to photo to DB: ${photo_id}`);
 
     try {
         await new Promise((resolve, reject) => {
-            dbConnection.query("INSERT INTO tags (tag) VALUES (?)", [tag], function (err, results) {
+            dbConnection.query("INSERT INTO photo_tags (photo_id, tag_id) VALUES (?, ?)", [photo_id, tag_id], function (err, results) {
                 if (err) {
-                    console.error("DB error:", err);
-                    reject(err); // Reject if there's an error
+                    reject(err);
                 } else {
                     console.log("DB insert successful:", results);
-                    resolve(results); // Resolve if the query was successful
+                    resolve(results);
                 }
             });
         });
     } catch (error) {
-        console.error("Error during DB operation:", error);
+        console.error("Error during DB photo_tags operation:", error);
     }
 }
+
+

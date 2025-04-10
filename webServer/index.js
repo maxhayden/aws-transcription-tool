@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
@@ -37,7 +37,7 @@ const sessionStore = new MySQLStore(dbConfig);
 
 app.use(
     session({
-        secret:"secret",
+        secret: "secret",
         resave: false,
         saveUninitialized: false,
         store: sessionStore,
@@ -47,16 +47,16 @@ app.use(
     })
 )
 
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
     res.locals.user = req.session.authenticated ? req.session.user : null;
     next();
-  });
+});
 
 
-function isAuthenticated(req,res,next){
-    if(req.session.authenticated == true){ 
+function isAuthenticated(req, res, next) {
+    if (req.session.authenticated == true) {
         next();
-    } else{
+    } else {
         res.redirect("/login?accessDenied");
     }
 }
@@ -79,7 +79,7 @@ app.get('/login', function (req, res) {
 app.post('/login', function (req, res) {
     console.log("signing in...");
     //get the user input
-    const {email, password} = req.body;
+    const { email, password } = req.body;
 
     dbConnection.getConnection(function (err, connection) {
         if (err) {
@@ -107,16 +107,16 @@ app.post('/login', function (req, res) {
                         console.log(req.session);
 
 
-                        return res.redirect('/home?loggedin'); 
-                    }  else {
+                        return res.redirect('/home?loggedin');
+                    } else {
                         console.log("wrong password");
-                        return res.redirect('/login?error'); 
+                        return res.redirect('/login?error');
                     }
                 });
             } else {
                 console.log("account doesn't exist");
-                return res.redirect('/login?error'); 
-            }   
+                return res.redirect('/login?error');
+            }
         }
         );
     });
@@ -130,7 +130,7 @@ app.get('/register', function (req, res) {
 app.post('/register', function (req, res) {
     //register process page
     //get the user input
-    const {email, password} = req.body;
+    const { email, password } = req.body;
 
     bcrypt.hash(password, saltRounds, function (err, hash) {
         if (err) {
@@ -146,18 +146,18 @@ app.post('/register', function (req, res) {
                 connection.release();
                 if (err) {
                     console.error('Query error:', err);
-                    return res.redirect('/register?error'); 
+                    return res.redirect('/register?error');
                 }
                 console.log("User Registered");
-                return res.redirect('/login'); 
+                return res.redirect('/login');
             }
             );
         });
     });
 });
 
-app.get('/logout', function (req, res){
-    req.session.destroy(function(err) {
+app.get('/logout', function (req, res) {
+    req.session.destroy(function (err) {
         // cannot access session here
     })
     res.locals.user = null;
@@ -166,9 +166,32 @@ app.get('/logout', function (req, res){
 
 app.get('/dashboard', isAuthenticated, function (req, res) {
     //open form.html from the views directory
-    console.log("Inside /dashboard route");
-    res.render('app');
+
+    dbConnection.getConnection(function (err, connection) {
+
+        if (err) {
+            console.error('Database connection failed:', err);
+            return res.status(500).send('Database connection failed: ' + err.message);
+        }
+
+        connection.query(`
+        SELECT p.url 
+        FROM photos p 
+        JOIN users u ON u.id = p.user_id 
+        WHERE u.id = ?
+    `, [req.session.user_id], function (err, results) {
+            connection.release(); 
+            if (err) {
+                console.error('Query error:', err);
+                return res.status(500).send('Query failed: ' + err.message);
+            }
+            console.log('Query results:', results);
+            res.render('app', { photos: results });
+        });
+
+    });
 });
+
 
 app.get('/debug', function (req, res) {
     dbConnection.getConnection(function (err, connection) {
@@ -191,7 +214,7 @@ app.get('/debug', function (req, res) {
     });
 });
 
-app.get('/session', function(req, res){
+app.get('/session', function (req, res) {
     res.json(req.session);
 })
 
@@ -232,10 +255,49 @@ app.post('/dashboard', upload.single('image'), async (req, res) => {
     try {
         const result = await uploadImage(id, fileName, bucketName, file);
         console.log(result);
-        return res.redirect('/dashboard?success'); 
+        return res.redirect('/dashboard?success');
     } catch (err) {
         console.error("Upload failed:", err);
-        return res.redirect('/dashboard?fail'); 
+        return res.redirect('/dashboard?fail');
+    }
+});
+
+app.get('/image', async function (req, res, next) {
+
+    console.log(req.session.user_id + "/" + req.query.src);
+
+    const params = {
+        Bucket: "tagme-s3input-796556586063",
+        Key: req.session.user_id + "/" + req.query.src
+    };
+
+    const getObjectCommand = new GetObjectCommand(params);
+
+    try {
+        const response = await s3.send(getObjectCommand);
+
+        // Store all of data chunks returned from the response data stream 
+        let responseDataChunks = [];
+
+        // Handle an error while streaming the response body
+        response.Body.once('error', err => {
+            console.error('Error streaming the response body:', err);
+            res.status(500).send('Error retrieving image');
+        });
+
+        // Attach a 'data' listener to add the chunks of data to our array
+        response.Body.on('data', chunk => responseDataChunks.push(chunk));
+
+        // Once the stream has no more data, join the chunks into a buffer and return the image
+        response.Body.once('end', () => {
+            const imageBuffer = Buffer.concat(responseDataChunks);
+            res.setHeader('Content-Type', 'image/png');
+            res.send(imageBuffer); // Send the image buffer in the response
+        });
+
+    } catch (err) {
+        console.log('Error in getting object from S3:', err);
+        res.status(500).send('Error retrieving image');
     }
 });
 
