@@ -166,14 +166,39 @@ app.get('/logout', function (req, res) {
 
 app.get('/dashboard', isAuthenticated, function (req, res) {
     const { tag, post } = req.query;
+    
 
     if (!tag){
+        console.log("no tag");
         dbConnection.getConnection(function (err, connection) {
             if (err) {
                 console.error('Database connection failed:', err);
                 return res.status(500).send('Database connection failed: ' + err.message);
             }
     
+            connection.query(`
+            SELECT p.url 
+            FROM photos p 
+            JOIN users u ON u.id = p.user_id 
+            WHERE u.id = ?
+        `, [req.session.user_id], function (err, results) {
+                connection.release(); 
+                if (err) {
+                    console.error('Query error:', err);
+                    return res.status(500).send('Query failed: ' + err.message);
+                }
+                console.log('Query results:', results);
+                res.render('app', { photos: results });
+            });
+    
+        });
+    } else {
+        console.log(tag);
+        dbConnection.getConnection(function (err, connection) {
+            if (err) {
+                console.error('Database connection failed:', err);
+                return res.status(500).send('Database connection failed: ' + err.message);
+            }
             connection.query(`
             SELECT p.url 
             FROM photos p 
@@ -190,13 +215,8 @@ app.get('/dashboard', isAuthenticated, function (req, res) {
                 console.log('Query results:', results);
                 res.render('app', { photos: results });
             });
-    
         });
-    } else {
-        
-    }
-
-    
+    }  
 });
 
 
