@@ -301,7 +301,7 @@ app.get('/image', async function (req, res, next) {
     console.log(req.session.user_id + "/" + req.query.src);
 
     const params = {
-        Bucket: "tagme-s3input-796556586063",
+        Bucket: process.env.S3_INPUT,
         Key: req.session.user_id + "/" + req.query.src
     };
 
