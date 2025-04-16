@@ -184,10 +184,12 @@ app.get('/dashboard', isAuthenticated, function (req, res) {
             }
     
             connection.query(`
-            SELECT p.url 
-            FROM photos p 
-            JOIN users u ON u.id = p.user_id 
-            WHERE u.id = ?
+            SELECT p.url as url, t.name tag
+            FROM photos p
+            LEFT JOIN photo_tags pt ON p.photo_id = pt.photo_id
+            LEFT JOIN tags t ON pt.tag_id = t.tag_id
+            JOIN users u ON u.id = p.user_id
+            WHERE u.id = ?;
         `, [req.session.user_id], function (err, results) {
                 connection.release(); 
                 if (err) {
@@ -304,6 +306,7 @@ app.get('/image', async function (req, res, next) {
         Bucket: process.env.S3_INPUT,
         Key: req.session.user_id + "/" + req.query.src
     };
+
 
     const getObjectCommand = new GetObjectCommand(params);
 

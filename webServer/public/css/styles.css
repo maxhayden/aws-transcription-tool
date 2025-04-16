@@ -13,3 +13,18 @@ body {
             background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+
+.labels{
+    display: none;
+    position: absolute;
+    width: inherit;
+    height: inherit;
+    background-color: rgba(67, 67, 67, 0.339);
+}
+
+.image-box:hover .labels{
+    display: flex;
+}
+
+
+

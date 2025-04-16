@@ -3,7 +3,7 @@
 
 
 <head>
-    <title>EchoNote - Audio Transcriber</title>
+    <title>TagMe - Dashboard</title>
     <%- include('partials/head') %>
 </head>
 
@@ -23,7 +23,7 @@
                             <% } else { %>
                                 <p>You are not logged in.</p>
                                 <% } %>
-                                
+                 
                     </p>
                 </div>
                 
@@ -58,17 +58,35 @@
                 </form>
 
                 <% 
+                console.log(photos.length);
+                for(let i=0; i < photos.length; i++) {
+                    let url = photos[i].url;
+                    let j = i;
+                    let tags = [];
+    
+                    while (j < photos.length && photos[i].url === photos[j].url) {
+                        tags.push(photos[j].tag);
+                        j++;
+                    }
                 
-                for(var i=0; i < photos.length; i++) {
                      %>
                     <div class="m-2 border border-dark rounded image-box overflow-hidden" id="image-box-<%- i %>">
+                        <div class="labels justify-content-center flex-column">
+                        <% 
+                        console.log(tags);
+
+                        for (let k =0; k < tags.length; k++){
+                        %> 
+                                <p class="text-light text-center fw-bold fs-3"><%=  tags[k] %></p>                                   
+                        <% } %> 
+                    </div>
                     </div>
                         <script>
                             // Fetch the image from your server
                             fetch('/image?src=<%- photos[i].url %>')
+                                
                                 .then(response => response.blob()) 
                                 .then(imageBlob => {
-                                   
                                     const imageUrl = URL.createObjectURL(imageBlob);
                                     const imgElement = document.createElement('img');
                                     imgElement.style.height = "100%";
@@ -86,8 +104,11 @@
                                 });
                         </script>
 
-                
-                    <% } %>
+                    <p>   
+                <%
+                    i = j;
+                } %>
+            </p>
                         </table>
 
             </div>
