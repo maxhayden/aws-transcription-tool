@@ -156,7 +156,7 @@ app.post('/register', function (req, res) {
                     return res.redirect('/register?error=true');
                 }
                 console.log("User Registered");
-                return res.redirect('/login');
+                return res.redirect('/login?success=true');
             }
             );
         });

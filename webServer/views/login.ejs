@@ -15,6 +15,10 @@
                 <form class="p-2" method="post">
                     <h1 class="h3 mb-3 fw-normal">Login</h1>
 
+                    <% if (query.success) { %>
+                        <p class="text-success fw-bold">Account Registered Successfully!</p>
+                    <% } %>
+
                     <div class="form-floating p-1">
                         <input type="email" name="email" class="form-control" id="floatingInput"
                             placeholder="name@example.com" required>

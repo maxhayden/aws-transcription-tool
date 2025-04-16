@@ -59,12 +59,12 @@
 
                 <% 
                 console.log(photos.length);
-                for(let i=0; i < photos.length; i++) {
+                for(let i=0; i < photos.length;) {
                     let url = photos[i].url;
                     let j = i;
                     let tags = [];
     
-                    while (j < photos.length && photos[i].url === photos[j].url) {
+                    while (j < photos.length && url === photos[j].url) {
                         tags.push(photos[j].tag);
                         j++;
                     }
